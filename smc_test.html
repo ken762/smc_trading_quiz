@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMC Pro 裸K交易測驗系統</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0e14;        
+            --card-bg: #131722;         
+            --card-hover: #1c2230;
+            --border-color: #2a2e39;    
+            --text-main: #d1d4dc;       
+            --text-muted: #787b86;      
+            --bull-color: #089981;      
+            --bull-hover: #067a67;
+            --bear-color: #f23645;      
+            --bear-hover: #c92a38;
+            --primary-color: #2962ff;   
+            --primary-hover: #1e4bd8;
+            --accent-glow: rgba(41, 98, 255, 0.15);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: radial-gradient(circle at 50% 0%, #1a1e29 0%, var(--bg-color) 60%);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .container {
+            background-color: rgba(19, 23, 34, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 40px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+            width: 100%;
+            max-width: 850px;
+            position: relative;
+        }
+
+        /* --- 首頁專屬 UI 樣式 --- */
+        .terminal-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .badge {
+            display: inline-block;
+            background: rgba(41, 98, 255, 0.1);
+            color: #4477ff;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(41, 98, 255, 0.3);
+            margin-bottom: 15px;
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+        .terminal-header h1 {
+            font-size: 32px;
+            font-weight: 900;
+            color: #ffffff;
+            margin: 0 0 10px 0;
+            letter-spacing: -0.5px;
+        }
+        .terminal-header p {
+            color: var(--text-muted);
+            font-size: 15px;
+            max-width: 500px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .level-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: left;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        
+        .level-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: transparent;
+            transition: 0.3s;
+        }
+
+        .level-card.active:hover {
+            background: var(--card-hover);
+            border-color: rgba(41, 98, 255, 0.4);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
+        }
+        .level-card.active:hover::before { background: var(--primary-color); }
+
+        .level-card.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .card-tag {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+        .tag-unlocked { background: rgba(8, 153, 129, 0.15); color: #0bd4b4; border: 1px solid rgba(8, 153, 129, 0.3); }
+        .tag-locked { background: rgba(120, 123, 134, 0.15); color: #787b86; border: 1px solid rgba(120, 123, 134, 0.3); }
+
+        .level-card h3 {
+            color: #ffffff;
+            font-size: 18px;
+            text-align: left;
+            margin: 0 0 8px 0;
+        }
+        .level-card p {
+            color: var(--text-muted);
+            font-size: 13px;
+            margin: 0 0 20px 0;
+            line-height: 1.5;
+        }
+
+        .card-btn {
+            display: inline-block;
+            width: 100%;
+            text-align: center;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+        .card-btn.start {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+        }
+        .level-card.active:hover .card-btn.start { background-color: var(--primary-hover); }
+        .card-btn.wait { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); }
+
+        /* --- 測驗畫面與其他共用樣式 --- */
+        #quiz-screen, #result-screen { display: none; }
+        
+        .progress-container { width: 100%; background-color: var(--border-color); border-radius: 8px; height: 6px; margin-bottom: 15px; overflow: hidden; }
+        .progress-bar { height: 100%; background-color: var(--primary-color); width: 0%; transition: width 0.4s ease; }
+        .progress-text { color: var(--text-muted); font-size: 13px; text-align: right; margin-bottom: 20px; font-weight: 600; }
+        
+        #kline-container { width: 100%; margin: 20px 0; text-align: center; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.3); }
+        .question-text { font-size: 17px; margin: 25px 0; text-align: center; color: #ffffff; line-height: 1.6; }
+        
+        .btn { display: flex; justify-content: center; align-items: center; width: 100%; padding: 16px; margin: 12px 0; background-color: transparent; color: white; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 600; transition: all 0.2s ease; }
+        .btn:active { transform: translateY(2px); }
+        .btn-bull { background: linear-gradient(180deg, #0aab91 0%, var(--bull-color) 100%); border: 1px solid #0bd4b4; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+        .btn-bull:hover { background: var(--bull-hover); box-shadow: 0 0 15px rgba(8,153,129,0.4); }
+        .btn-bear { background: linear-gradient(180deg, #ff4b59 0%, var(--bear-color) 100%); border: 1px solid #ff737f; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+        .btn-bear:hover { background: var(--bear-hover); box-shadow: 0 0 15px rgba(242,54,69,0.4); }
+        .btn-primary { background-color: var(--primary-color); border-color: var(--primary-color); }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        
+        #feedback-area { margin: 20px 0; padding: 20px; border-radius: 8px; display: none; font-size: 16px; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .feedback-correct { background-color: rgba(8, 153, 129, 0.1); color: #22c55e; border: 1px solid rgba(8, 153, 129, 0.3); }
+        .feedback-error { background-color: rgba(242, 54, 69, 0.1); color: #ef4444; border: 1px solid rgba(242, 54, 69, 0.3); }
+        .feedback-title { font-weight: 700; font-size: 1.4em; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;}
+        .feedback-exp { margin-top: 5px; line-height: 1.7; color: var(--text-main); }
+        .success-msg { color: var(--bull-color); font-size: 24px; font-weight: 700; text-align: center; margin: 30px 0; line-height: 1.5; }
+        .score-display { text-align: center; font-size: 40px; font-weight: 700; margin-bottom: 20px; letter-spacing: -1px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 首頁選單：機構級儀表板設計 -->
+    <div id="menu-screen">
+        <div class="terminal-header">
+            <div class="badge">PROP FIRM TRAINING TERMINAL</div>
+            <h1>SMC 核心交易訓練系統</h1>
+            <p>專為機構訂單流與裸K交易者打造的直覺反射訓練庫，反覆刻意練習，將市場結構內化為你的交易本能。</p>
+        </div>
+
+        <div class="level-grid">
+            <!-- 關卡 1 卡片 -->
+            <div class="level-card active" onclick="startQuiz()">
+                <div class="card-tag tag-unlocked">🟢 MODULE 01 | 已解鎖</div>
+                <h3>日線偏見與動能延續</h3>
+                <p>透過判斷前日高低點與昨日收盤價的關係，精準抓出今天的 Daily Bias，避免逆勢操作。</p>
+                <div class="card-btn start">初始化訓練單元</div>
+            </div>
+
+            <!-- 關卡 2 卡片 (鎖定狀態) -->
+            <div class="level-card locked">
+                <div class="card-tag tag-locked">🔒 MODULE 02 | 敬請期待</div>
+                <h3>市場結構破壞 (MSB)</h3>
+                <p>辨識關鍵高低點的突破，判斷市場趨勢何時發生真正的反轉，而非單純的流動性獲取。</p>
+                <div class="card-btn wait">模組建置中...</div>
+            </div>
+            
+            <!-- 關卡 3 卡片 (鎖定狀態) -->
+            <div class="level-card locked">
+                <div class="card-tag tag-locked">🔒 MODULE 03 | 敬請期待</div>
+                <h3>流動性清算 (Liquidity Sweeps)</h3>
+                <p>獵殺止損的陷阱辨識。學習如何區分價格是真正的突破，還是聰明錢在收集流動性。</p>
+                <div class="card-btn wait">模組建置中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 測驗畫面 -->
+    <div id="quiz-screen">
+        <h3 style="text-align: center; margin-bottom: 25px;">Module 01: 日線裸K偏見判斷</h3>
+        
+        <div class="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div class="progress-text" id="progress-text">1 / 10</div>
+        
+        <div id="kline-container"></div>
+        
+        <div class="question-text">根據上方圖表的關鍵價位關係，請判斷今天的日線偏見（目標價）：</div>
+        
+        <div id="action-buttons" style="display: flex; gap: 15px;">
+            <button class="btn btn-bull" onclick="submitAnswer('bull')">買入 / 看多 (目標昨日高點)</button>
+            <button class="btn btn-bear" onclick="submitAnswer('bear')">賣出 / 看空 (目標昨日低點)</button>
+        </div>
+        
+        <div id="feedback-area">
+            <div id="feedback-title" class="feedback-title"></div>
+            <div id="feedback-exp" class="feedback-exp"></div>
+            <button id="next-btn" class="btn btn-primary" style="margin-top:20px;" onclick="nextQuestion()">繼續下一題 ➔</button>
+        </div>
+    </div>
+
+    <!-- 結果畫面 -->
+    <div id="result-screen">
+        <h2 style="text-align: center; margin-bottom: 20px;">訓練成果報告</h2>
+        <div id="score-text" class="score-display"></div>
+        <div id="error-container"></div>
+        <div id="result-actions"></div>
+    </div>
+</div>
+
+<script>
+    // --- 測驗邏輯完全保留上一版的完美狀態 ---
+    const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+    function generateRandomQuestionData() {
+        let d2_isBull = Math.random() > 0.5;
+        let d2_body = rand(40, 100); 
+        let d2_tw = rand(15, 45);
+        let d2_bw = rand(15, 45);
+        let d2_centerY = 175; 
+        
+        let d2_open, d2_close, d2_high, d2_low;
+        if (d2_isBull) {
+            d2_close = d2_centerY - d2_body/2;
+            d2_open = d2_centerY + d2_body/2;
+            d2_high = d2_close - d2_tw;
+            d2_low = d2_open + d2_bw;
+        } else {
+            d2_open = d2_centerY - d2_body/2;
+            d2_close = d2_centerY + d2_body/2;
+            d2_high = d2_open - d2_tw;
+            d2_low = d2_close + d2_bw;
+        }
+
+        let d1_open = d2_close; 
+        let conditionMet = Math.random() > 0.5;
+        let d1_close;
+
+        if (d2_isBull) {
+            if (conditionMet) {
+                d1_close = rand(30, d2_high - 10); 
+            } else {
+                d1_close = rand(d2_high + 10, 320); 
+            }
+        } else {
+            if (conditionMet) {
+                d1_close = rand(d2_low + 10, 320);
+            } else {
+                d1_close = rand(30, d2_low - 10);
+            }
+        }
+
+        let d1_isBull = d1_close < d1_open;
+        let d1_high = d1_isBull ? d1_close - rand(10, 25) : d1_open - rand(10, 25);
+        let d1_low = d1_isBull ? d1_open + rand(10, 25) : d1_close + rand(10, 25);
+
+        let ans, exp;
+        if (!d2_isBull) { 
+            if (d1_close > d2_low) {
+                ans = 'bear';
+                exp = "前天是<strong style='color:#f23645'>【陰線】</strong>，昨天收盤價成功跌破前日低點<strong style='color:#f23645'>【有收更低】</strong>，代表空方動能強勢延續。<br>▶ 今日目標價為昨日低點，故看空。";
+            } else {
+                ans = 'bull';
+                exp = "前天是<strong style='color:#f23645'>【陰線】</strong>，但昨天收盤價<strong style='color:#089981'>【沒有收更低】</strong>(未能跌破前日低點)，代表空方動能無法延續。<br>▶ 今日目標價上看昨日高點，轉為看多。";
+            }
+        } else { 
+            if (d1_close < d2_high) {
+                ans = 'bull';
+                exp = "前天是<strong style='color:#089981'>【陽線】</strong>，昨天收盤價成功突破前日高點<strong style='color:#089981'>【有收更高】</strong>，代表多方動能強勢延續。<br>▶ 今日目標價為昨日高點，故看多。";
+            } else {
+                ans = 'bear';
+                exp = "前天是<strong style='color:#089981'>【陽線】</strong>，但昨天收盤價<strong style='color:#f23645'>【沒有收更高】</strong>(未能突破前日高點)，代表多方動能受阻。<br>▶ 今日目標價下看昨日低點，轉為看空。";
+            }
+        }
+
+        const drawCandle = (x, open, close, high, low) => {
+            const isGreen = close < open;
+            const color = isGreen ? '#089981' : '#f23645'; 
+            const rectY = isGreen ? close : open;
+            const rectH = Math.abs(close - open) || 1; 
+            return `
+                <line x1="${x}" y1="${high}" x2="${x}" y2="${low}" stroke="${color}" stroke-width="3"/>
+                <rect x="${x-20}" y="${rectY}" width="40" height="${rectH}" fill="${color}" rx="2"/>
+            `;
+        };
+
+        let svg = `<svg viewBox="0 0 550 350" width="100%" height="350" xmlns="http://www.w3.org/2000/svg" style="background-color:#1e222d;">`;
+        
+        for(let i = 50; i < 350; i += 50) {
+            svg += `<line x1="0" y1="${i}" x2="550" y2="${i}" stroke="#2a2e39" stroke-width="1" opacity="0.5"/>`;
+        }
+        
+        svg += `<text x="150" y="30" fill="#787b86" font-size="16" font-weight="600" text-anchor="middle">前天 (Day -2)</text>`;
+        svg += `<text x="400" y="30" fill="#787b86" font-size="16" font-weight="600" text-anchor="middle">昨天 (Day -1)</text>`;
+        
+        svg += drawCandle(150, d2_open, d2_close, d2_high, d2_low);
+        svg += drawCandle(400, d1_open, d1_close, d1_high, d1_low);
+        
+        const textStyle = `font-size="14" font-weight="700" stroke="#1e222d" stroke-width="4" paint-order="stroke"`;
+
+        svg += `<line x1="80" y1="${d2_high}" x2="530" y2="${d2_high}" stroke="#e0b324" stroke-dasharray="6,4" stroke-width="1.5" opacity="0.8"/>`;
+        svg += `<text x="530" y="${d2_high - 8}" fill="#e0b324" text-anchor="end" ${textStyle}>前日高點</text>`;
+
+        svg += `<line x1="80" y1="${d2_low}" x2="530" y2="${d2_low}" stroke="#2962ff" stroke-dasharray="6,4" stroke-width="1.5" opacity="0.8"/>`;
+        svg += `<text x="530" y="${d2_low + 18}" fill="#2962ff" text-anchor="end" ${textStyle}>前日低點</text>`;
+
+        svg += `<line x1="150" y1="${d1_close}" x2="530" y2="${d1_close}" stroke="#ffffff" stroke-dasharray="3,3" stroke-width="2" opacity="0.9"/>`;
+        
+        let closeTextY = d1_close > d1_open ? d1_close + 18 : d1_close - 8;
+        svg += `<text x="275" y="${closeTextY}" fill="#ffffff" text-anchor="middle" ${textStyle}>昨日收盤</text>`;
+
+        svg += `</svg>`;
+
+        return { svg: svg, ans: ans, exp: exp };
+    }
+
+    let currentQuestions = [];
+    let currentQuestionIndex = 0;
+    let totalErrors = 0;
+
+    function generateQuestions() {
+        const questions = [];
+        for (let i = 0; i < 10; i++) {
+            questions.push(generateRandomQuestionData());
+        }
+        return questions;
+    }
+
+    function updateProgress() {
+        const currentNum = currentQuestionIndex + 1;
+        const totalNum = 10;
+        document.getElementById('progress-text').innerText = `目前進度: ${currentNum} / ${totalNum}`;
+        document.getElementById('progress-bar').style.width = `${(currentNum / totalNum) * 100}%`;
+    }
+
+    function startQuiz() {
+        document.getElementById('menu-screen').style.display = 'none';
+        document.getElementById('result-screen').style.display = 'none';
+        document.getElementById('quiz-screen').style.display = 'block';
+        
+        currentQuestions = generateQuestions();
+        currentQuestionIndex = 0;
+        totalErrors = 0;
+        showQuestion();
+    }
+
+    function showQuestion() {
+        document.getElementById('action-buttons').style.display = 'flex';
+        document.getElementById('feedback-area').style.display = 'none';
+        updateProgress();
+        
+        const currentQ = currentQuestions[currentQuestionIndex];
+        document.getElementById('kline-container').innerHTML = currentQ.svg;
+    }
+
+    function submitAnswer(userAns) {
+        document.getElementById('action-buttons').style.display = 'none';
+        const currentQ = currentQuestions[currentQuestionIndex];
+        const feedbackArea = document.getElementById('feedback-area');
+        const feedbackTitle = document.getElementById('feedback-title');
+        const feedbackExp = document.getElementById('feedback-exp');
+        
+        feedbackArea.style.display = 'block';
+
+        if (userAns === currentQ.ans) {
+            feedbackArea.className = 'feedback-correct';
+            feedbackTitle.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> 判斷精準！`;
+            feedbackExp.innerHTML = `${currentQ.exp}`;
+        } else {
+            totalErrors++;
+            feedbackArea.className = 'feedback-error';
+            feedbackTitle.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> 判斷錯誤！`;
+            feedbackExp.innerHTML = `<span style="color:#ef4444; font-weight:bold;">請留意【昨日收盤】是否成功越過【前日高/低點】：</span><br><br>${currentQ.exp}`;
+        }
+    }
+
+    function nextQuestion() {
+        currentQuestionIndex++;
+        if (currentQuestionIndex < 10) {
+            showQuestion();
+        } else {
+            showResult();
+        }
+    }
+
+    function showResult() {
+        document.getElementById('quiz-screen').style.display = 'none';
+        document.getElementById('result-screen').style.display = 'block';
+        
+        const score = (10 - totalErrors) * 10;
+        const scoreElement = document.getElementById('score-text');
+        scoreElement.innerText = `得分: ${score}`;
+        scoreElement.style.color = score === 100 ? '#089981' : '#f23645';
+        
+        const errorContainer = document.getElementById('error-container');
+        const actionContainer = document.getElementById('result-actions');
+
+        if (totalErrors === 0) {
+            errorContainer.innerHTML = `<div class="success-msg">🎉 完美通關！<br>你已具備看破裸K動能的職業級反射神經！</div>`;
+            actionContainer.innerHTML = `<button class="btn btn-primary" onclick="backToMenu()">返回系統大廳</button>`;
+        } else {
+            let html = `<div style="background: rgba(242, 54, 69, 0.1); border: 1px solid rgba(242, 54, 69, 0.3); padding: 20px; border-radius: 8px; font-size: 16px; line-height: 1.6; color: #e0e3eb; margin-bottom:20px;">
+                        本次答錯了 <span style="color:#ef4444; font-weight:bold; font-size:20px;">${totalErrors}</span> 題。<br>
+                        頂尖交易員也是從不斷試錯中建立肌肉記憶，請重新測驗直到滿分通過！
+                        </div>`;
+            errorContainer.innerHTML = html;
+            actionContainer.innerHTML = `<button class="btn btn-primary" onclick="startQuiz()">重新執行訓練模組</button>
+                                         <button class="btn" style="background: transparent; border: 1px solid #787b86;" onclick="backToMenu()">返回系統大廳</button>`;
+        }
+    }
+
+    function backToMenu() {
+        document.getElementById('result-screen').style.display = 'none';
+        document.getElementById('menu-screen').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
